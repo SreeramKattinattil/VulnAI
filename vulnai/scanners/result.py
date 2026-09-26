@@ -5,7 +5,8 @@ from typing import List, Optional
 @dataclass
 class Finding:
     """
-    Represents a vulnerability discovered by a scanner.
+    Represents a vulnerability or security observation
+    discovered by a scanner.
     """
 
     vulnerability: str
@@ -26,6 +27,10 @@ class Finding:
 
     scanner: str = ""
 
+    reflection_context: Optional[str] = None
+
+    verified: bool = False
+
     def to_dict(self) -> dict:
         """
         Convert the finding into a dictionary.
@@ -42,4 +47,6 @@ class Finding:
             "evidence": self.evidence,
             "description": self.description,
             "scanner": self.scanner,
+            "reflection_context": self.reflection_context,
+            "verified": self.verified,
         }
