@@ -1,5 +1,6 @@
 import typer
 from rich.console import Console
+from rich.table import Table
 
 from vulnai.core.http_client import HTTPClient
 from vulnai.crawler.crawler import Crawler
@@ -111,6 +112,10 @@ def crawl(
 
         return
 
+    # ==========================================================
+    # SUMMARY
+    # ==========================================================
+
     console.print(
         "\n[bold green]Crawl completed[/bold green]"
     )
@@ -136,65 +141,312 @@ def crawl(
     )
 
     console.print(
-        "\n[bold]URLs:[/bold]"
+        f"Endpoints discovered: "
+        f"[yellow]{len(results['endpoint_inventory'])}[/yellow]"
     )
 
-    for discovered_url in sorted(
-        results["urls"]
+    # ==========================================================
+    # ENDPOINT INVENTORY
+    # ==========================================================
+
+    console.print(
+        "\n[bold cyan]Endpoint Inventory[/bold cyan]\n"
+    )
+
+    endpoint_table = Table(
+        show_header=True,
+        header_style="bold",
+    )
+
+    endpoint_table.add_column(
+        "Method",
+        style="cyan",
+        width=8,
+    )
+
+    endpoint_table.add_column(
+        "Path",
+        style="white",
+        min_width=30,
+    )
+
+    endpoint_table.add_column(
+        "Type",
+        style="yellow",
+        width=10,
+    )
+
+    endpoint_table.add_column(
+        "Parameters",
+        style="green",
+    )
+
+    endpoint_table.add_column(
+        "Sources",
+        style="magenta",
+    )
+
+    endpoint_inventory = (
+        results["endpoint_inventory"]
+    )
+
+    for endpoint_key in sorted(
+        endpoint_inventory
     ):
 
-        console.print(
-            f"  {discovered_url}"
+        endpoint = endpoint_inventory[
+            endpoint_key
+        ]
+
+        parameters = endpoint.get(
+            "parameters",
+            [],
+        )
+
+        sources = endpoint.get(
+            "sources",
+            [],
+        )
+
+        endpoint_table.add_row(
+            endpoint.get(
+                "method",
+                "GET",
+            ),
+            endpoint.get(
+                "path",
+                "/",
+            ),
+            endpoint.get(
+                "type",
+                "OTHER",
+            ),
+            ", ".join(
+                parameters
+            ) or "-",
+            ", ".join(
+                sources
+            ) or "-",
         )
 
     console.print(
-        "\n[bold]Parameters:[/bold]"
+        endpoint_table
     )
 
-    for parameter in sorted(
-        results["parameters"]
-    ):
+    # ==========================================================
+    # API ENDPOINTS
+    # ==========================================================
 
-        console.print(
-            f"  {parameter}"
-        )
+    api_endpoints = [
+        endpoint
+        for endpoint in endpoint_inventory.values()
+        if endpoint.get("type") == "API"
+    ]
 
     console.print(
-        "\n[bold]API Requests:[/bold]"
+        "\n[bold cyan]API Endpoints[/bold cyan]\n"
     )
 
-    for api_url in sorted(
-        results["api_requests"]
-    ):
+    if api_endpoints:
+
+        api_table = Table(
+            show_header=True,
+            header_style="bold",
+        )
+
+        api_table.add_column(
+            "Method",
+            style="cyan",
+            width=8,
+        )
+
+        api_table.add_column(
+            "Endpoint",
+            style="white",
+        )
+
+        api_table.add_column(
+            "Parameters",
+            style="green",
+        )
+
+        for endpoint in sorted(
+            api_endpoints,
+            key=lambda item: (
+                item.get("method", "GET"),
+                item.get("path", "/"),
+            ),
+        ):
+
+            api_table.add_row(
+                endpoint.get(
+                    "method",
+                    "GET",
+                ),
+                endpoint.get(
+                    "path",
+                    "/",
+                ),
+                ", ".join(
+                    endpoint.get(
+                        "parameters",
+                        [],
+                    )
+                ) or "-",
+            )
 
         console.print(
-            f"  {api_url}"
+            api_table
         )
+
+    else:
+
+        console.print(
+            "[dim]No API endpoints discovered.[/dim]"
+        )
+
+    # ==========================================================
+    # SOCKET ENDPOINTS
+    # ==========================================================
+
+    socket_endpoints = [
+        endpoint
+        for endpoint in endpoint_inventory.values()
+        if endpoint.get("type") == "SOCKET"
+    ]
 
     console.print(
-        "\n[bold]Forms:[/bold]"
+        "\n[bold cyan]Socket Endpoints[/bold cyan]\n"
     )
 
-    for form in results["forms"]:
+    if socket_endpoints:
 
-        console.print(
-            f"\n  Page:   {form['page']}"
-        )
-
-        console.print(
-            f"  Action: {form['action']}"
-        )
-
-        console.print(
-            f"  Method: {form['method']}"
-        )
-
-        for input_field in form["inputs"]:
+        for endpoint in sorted(
+            socket_endpoints,
+            key=lambda item: item.get(
+                "path",
+                "/",
+            ),
+        ):
 
             console.print(
-                f"    - {input_field['name']} "
-                f"({input_field['type']})"
+                f"  [yellow]"
+                f"{endpoint.get('method', 'GET')}"
+                f"[/yellow] "
+                f"{endpoint.get('path', '/')}"
             )
+
+    else:
+
+        console.print(
+            "[dim]No socket endpoints discovered.[/dim]"
+        )
+
+    # ==========================================================
+    # PARAMETERS
+    # ==========================================================
+
+    console.print(
+        "\n[bold cyan]Parameters[/bold cyan]"
+    )
+
+    if results["parameters"]:
+
+        for parameter in sorted(
+            results["parameters"]
+        ):
+
+            console.print(
+                f"  {parameter}"
+            )
+
+    else:
+
+        console.print(
+            "  [dim]No parameters discovered.[/dim]"
+        )
+
+    # ==========================================================
+    # FORMS
+    # ==========================================================
+
+    console.print(
+        "\n[bold cyan]Forms[/bold cyan]"
+    )
+
+    if results["forms"]:
+
+        for form in results["forms"]:
+
+            console.print(
+                f"\n  Page:   "
+                f"{form['page']}"
+            )
+
+            console.print(
+                f"  Action: "
+                f"{form['action']}"
+            )
+
+            console.print(
+                f"  Method: "
+                f"{form['method']}"
+            )
+
+            for input_field in form[
+                "inputs"
+            ]:
+
+                console.print(
+                    f"    - "
+                    f"{input_field['name']} "
+                    f"({input_field['type']})"
+                )
+
+    else:
+
+        console.print(
+            "  [dim]No forms discovered.[/dim]"
+        )
+
+    # ==========================================================
+    # STATIC RESOURCES
+    # ==========================================================
+
+    static_endpoints = [
+        endpoint
+        for endpoint in endpoint_inventory.values()
+        if endpoint.get("type") == "STATIC"
+    ]
+
+    console.print(
+        "\n[bold cyan]Static Resources[/bold cyan]\n"
+    )
+
+    if static_endpoints:
+
+        console.print(
+            f"  Discovered: "
+            f"[yellow]{len(static_endpoints)}[/yellow]"
+        )
+
+        for endpoint in sorted(
+            static_endpoints,
+            key=lambda item: item.get(
+                "path",
+                "/",
+            ),
+        ):
+
+            console.print(
+                f"  {endpoint.get('path', '/')}"
+            )
+
+    else:
+
+        console.print(
+            "  [dim]No static resources discovered.[/dim]"
+        )
 
 
 if __name__ == "__main__":
